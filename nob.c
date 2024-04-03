@@ -14,14 +14,16 @@ int main(int argc, char **argv) {
 	nob_cmd_append(&cmd, "-I", "/usr/lib/llvm-14/include/");
 	nob_cmd_append(&cmd, "/usr/lib/llvm-14/lib/libclang-14.so");
 	nob_cmd_append(&cmd, "-o", "main");
-	nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb", "-pedantic");
+	nob_cmd_append(&cmd, "-Wextra", "-ggdb", "-pedantic");
 
 	if (!nob_cmd_run_sync(cmd)) return 1;
 
 	if (argc > 0) {
 		const char* subcmd = nob_shift_args(&argc, &argv);
-
-		if (strcmp(subcmd, "run") == 0) {
+		
+		if (strcmp(subcmd, "build") == 0) {
+			return 0;
+		} else if  (strcmp(subcmd, "run") == 0) {
 			cmd.count = 0;
 			nob_cmd_append(&cmd, "./main");
 			nob_da_append_many(&cmd, argv, argc);

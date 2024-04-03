@@ -1,0 +1,4 @@
+.PHONY: nob
+
+nob:
+	./nob
