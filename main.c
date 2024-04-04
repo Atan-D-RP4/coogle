@@ -8,6 +8,9 @@
 #define NOB_IMPLEMENTATION
 #include "nob.h"
 
+// TODO: Convert everything in Function from String_View to String_Builder
+// TODO: Check for memory leaks, other than LLVM's
+
 typedef struct {
 	size_t count;
 	size_t capacity;
@@ -19,7 +22,18 @@ typedef struct {
 	Nob_String_View name;
 	Nob_String_View args;
 	Nob_String_View return_type;
+	Nob_String_View location;
+	unsigned line;
+	unsigned column;
 } Function;
+
+typedef struct {
+	size_t count;
+	size_t capacity;
+	Function *items;
+} da_Function;
+
+da_Function coogle_funcs = { 0, 0, NULL };
 
 enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientData client_data) {
 
@@ -34,6 +48,57 @@ enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientD
 	
 	return CXChildVisit_Recurse;
 }
+
+int functions = 0;
+
+void getFunctions(Children children, Function *coogle_funcs, const char* source_file) {
+
+	for (size_t count = 0; count < children.count; count++) {
+
+		Function curr = coogle_funcs[count];
+
+		CXSourceLocation loc = clang_getCursorLocation(children.items[count]);
+		clang_getSpellingLocation(loc, NULL, &curr.line,
+				&curr.column, NULL);
+		curr.location = nob_sv_from_cstr(source_file);
+
+		CXType crsr_type = clang_getCursorType(children.items[count]);
+		CXType f_type = clang_getResultType(crsr_type);
+		CXString type_kind = clang_getTypeSpelling(f_type);
+		curr.argc = clang_Cursor_getNumArguments(children.items[count]);
+
+		Nob_String_Builder args = { 0 };
+
+		for (int i = 0; i < curr.argc; i++) {
+			CXString arg = clang_getTypeSpelling(clang_getArgType(crsr_type, i));
+
+			nob_sb_append_cstr(&args, clang_getCString(arg));
+			nob_sb_append_cstr(&args, ", ");
+
+			clang_disposeString(arg);
+		}
+
+		if (curr.argc == 0) {
+			curr.args = nob_sv_from_cstr("void");
+		} else {
+			curr.args.count = args.count;
+			curr.args.data = args.items;
+		}
+
+		nob_sb_append_cstr(&args, clang_getCString(clang_getCursorSpelling(children.items[count])));
+		curr.name.count = args.count;
+		curr.name.data = args.items;
+
+		nob_sb_append_cstr(&args, clang_getCString(type_kind));
+		curr.return_type.count = args.count;
+		curr.return_type.data = args.items;
+
+		//nob_log(NOB_INFO, "\r%s: %d:%d: %s :: %s :: %s", curr.location.data, curr.line, curr.column, curr.return_type.data, curr.name.data, curr.args.data);
+		clang_disposeString(type_kind);
+		
+	}
+}
+
 
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
@@ -79,58 +144,52 @@ int main(int argc, char *argv[]) {
 
 	CXFile file = clang_getFile(tu, source_file);
 	CXString filename = clang_getFileName(file);
-	for (size_t count = 0; count < children.count && count < 10; count++) {
 
+	Function coogle_funcs[children.count];
 
-		unsigned line, column;
-		CXSourceLocation loc = clang_getCursorLocation(children.items[count]);
-		clang_getSpellingLocation(loc, &file, &line, &column, NULL);
-		const char *func_loc = clang_getCString(filename);
+	getFunctions(children, coogle_funcs, clang_getCString(filename));
 
-		nob_log(NOB_INFO, "\r%s: %d:%d", func_loc, line, column);
+//	for (size_t count = 0; count < children.count; count++) {
+//
+//		Function *curr = &coogle_funcs[count];
+//
+//		CXSourceLocation loc = clang_getCursorLocation(children.items[count]);
+//		clang_getSpellingLocation(loc, NULL, &curr.line,
+//				&curr.column, NULL);
+//		curr.location = nob_sv_from_cstr(clang_getCString(filename));
+//
+//		CXType crsr_type = clang_getCursorType(children.items[count]);
+//		CXType f_type = clang_getResultType(crsr_type);
+//		CXString type_kind = clang_getTypeSpelling(f_type);
+//		curr.argc = clang_Cursor_getNumArguments(children.items[count]);
+//		Nob_String_Builder args = { 0 };
+//
+//		// nob_log(NOB_INFO, "\rSignature - %s", clang_getCString(sig));
+//
+//		for (int i = 0; i < curr.argc; i++) {
+//			CXString arg = clang_getTypeSpelling(clang_getArgType(crsr_type, i));
+//
+//			nob_sb_append_cstr(&args, clang_getCString(arg));
+//			nob_sb_append_cstr(&args, ", ");
+//
+//			clang_disposeString(arg);
+//		}
+//
+//		if (curr.argc == 0) {
+//			curr.args = nob_sv_from_cstr("Void");
+//		} else {
+//			curr.args.count = args.count;
+//			curr.args.data = args.items;
+//		}
+//
+//		curr.name = nob_sv_from_cstr(clang_getCString(clang_getCursorSpelling(children.items[count])));
+//		curr.return_type = nob_sv_from_cstr(clang_getCString(type_kind));
+//		
+//		nob_log(NOB_INFO, "\r%s: %d:%d", curr.location.data, curr.line, curr.column);
+//		nob_log(NOB_INFO, "\r%s :: %s :: "SV_Fmt, curr.name.data, curr.return_type.data, SV_Arg(curr.args));
+//		clang_disposeString(type_kind);
+//	}
 
-
-		// CXPrintingPolicy policy = clang_getCursorPrintingPolicy(cursor);	
-		// CXString sig = clang_getCursorPrettyPrinted(children.items[count], policy);
-
-		// CXType clang_getArgType(CXType T, unsigned i);
-
-		Function curr = { 0 };
-
-		// Cursor type is that of a Function
-		CXType crsr_type = clang_getCursorType(children.items[count]);
-		CXType f_type = clang_getResultType(crsr_type);
-		CXString type_kind = clang_getTypeKindSpelling(f_type.kind);
-		int f_argc = clang_Cursor_getNumArguments(children.items[count]);
-		Nob_String_Builder args = { 0 };
-
-		// nob_log(NOB_INFO, "\rSignature - %s", clang_getCString(sig));
-
-		for (int i = 0; i < f_argc; i++) {
-			CXString arg = clang_getTypeSpelling(clang_getArgType(crsr_type, i));
-
-			nob_sb_append_cstr(&args, clang_getCString(arg));
-
-			clang_disposeString(arg);
-		}
-		Nob_String_View f_args = { 
-			.count = args.count,
-			.data = args.items
-		};
-
-		curr.argc = f_argc;
-		if (curr.argc == 0) {
-			curr.args = nob_sv_from_cstr("Void");
-		} else {
-			curr.args = f_args;
-		}
-		curr.name = nob_sv_from_cstr(clang_getCString(clang_getCursorSpelling(children.items[count])));
-		curr.return_type = nob_sv_from_cstr(clang_getCString(clang_getTypeSpelling(f_type)));
-		
-		nob_log(NOB_INFO, "\r%s :: "SV_Fmt, curr.return_type.data, SV_Arg(curr.args));
-		clang_disposeString(type_kind);
-		// clang_disposeString(sig);
-	}
 
 	clang_disposeString(filename);
 	clang_disposeTranslationUnit(tu);
