@@ -17,7 +17,7 @@ typedef struct {
 typedef struct {
 	int argc;
 	Nob_String_View name;
-	Nob_String_Builder args;
+	Nob_String_View args;
 	Nob_String_View return_type;
 } Function;
 
@@ -77,12 +77,13 @@ int main(int argc, char *argv[]) {
 	CXCursor cursor = clang_getTranslationUnitCursor(tu);
 	clang_visitChildren(cursor, get_children, &children);
 
+	CXFile file = clang_getFile(tu, source_file);
+	CXString filename = clang_getFileName(file);
 	for (size_t count = 0; count < children.count && count < 10; count++) {
 
-		CXFile file;
+
 		unsigned line, column;
 		CXSourceLocation loc = clang_getCursorLocation(children.items[count]);
-		CXString filename = clang_getFileName(file);
 		clang_getSpellingLocation(loc, &file, &line, &column, NULL);
 		const char *func_loc = clang_getCString(filename);
 
@@ -101,14 +102,37 @@ int main(int argc, char *argv[]) {
 		CXType f_type = clang_getResultType(crsr_type);
 		CXString type_kind = clang_getTypeKindSpelling(f_type.kind);
 		int f_argc = clang_Cursor_getNumArguments(children.items[count]);
+		Nob_String_Builder args = { 0 };
 
 		// nob_log(NOB_INFO, "\rSignature - %s", clang_getCString(sig));
-		nob_log(NOB_INFO, "\rReturns - %s", clang_getCString(type_kind));
 
+		for (int i = 0; i < f_argc; i++) {
+			CXString arg = clang_getTypeSpelling(clang_getArgType(crsr_type, i));
+
+			nob_sb_append_cstr(&args, clang_getCString(arg));
+
+			clang_disposeString(arg);
+		}
+		Nob_String_View f_args = { 
+			.count = args.count,
+			.data = args.items
+		};
+
+		curr.argc = f_argc;
+		if (curr.argc == 0) {
+			curr.args = nob_sv_from_cstr("Void");
+		} else {
+			curr.args = f_args;
+		}
+		curr.name = nob_sv_from_cstr(clang_getCString(clang_getCursorSpelling(children.items[count])));
+		curr.return_type = nob_sv_from_cstr(clang_getCString(clang_getTypeSpelling(f_type)));
+		
+		nob_log(NOB_INFO, "\r%s :: "SV_Fmt, curr.return_type.data, SV_Arg(curr.args));
 		clang_disposeString(type_kind);
 		// clang_disposeString(sig);
 	}
 
+	clang_disposeString(filename);
 	clang_disposeTranslationUnit(tu);
 	clang_disposeIndex(index);
 	nob_da_free(children);

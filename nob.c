@@ -16,21 +16,22 @@ int main(int argc, char **argv) {
 	nob_cmd_append(&cmd, "-o", "main");
 	nob_cmd_append(&cmd, "-Wextra", "-ggdb", "-pedantic");
 
-	if (!nob_cmd_run_sync(cmd)) return 1;
 
 	if (argc > 0) {
 		const char* subcmd = nob_shift_args(&argc, &argv);
 		
 		if (strcmp(subcmd, "build") == 0) {
+			if (!nob_cmd_run_sync(cmd)) return 1;
 			return 0;
 		} else if  (strcmp(subcmd, "run") == 0) {
+			if (!nob_cmd_run_sync(cmd)) return 1;
 			cmd.count = 0;
 			nob_cmd_append(&cmd, "./main");
 			nob_da_append_many(&cmd, argv, argc);
 			if (!nob_cmd_run_sync(cmd)) return 1;
 		} else if (strcmp(subcmd, "clean") == 0) {
 			cmd.count = 0;
-			nob_cmd_append(&cmd, "rm", "main", "nob.old");
+			nob_cmd_append(&cmd, "rm", "main", "nob", "nob.old");
 			if (!nob_cmd_run_sync(cmd)) return 1;
 		} else {
 			fprintf(stderr, "Unknown subcommand: %s\n", subcmd);
