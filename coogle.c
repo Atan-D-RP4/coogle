@@ -7,8 +7,8 @@
 
 #define NOB_IMPLEMENTATION
 #define STB_C_LEXER_IMPLEMENTATION 
-#include "nob.h"
-#include "stb_c_lexer.h"
+#include "include/nob.h"
+#include "include/stb_c_lexer.h"
 
 // TODO: Fix the copy_and_dispose function. Somehow
 // TODO: Get user input for Queries
@@ -97,7 +97,9 @@ enum CXChildVisitResult get_functions(CXCursor cursor, CXCursor parent, CXClient
 
 		// Get the arguments of the function and append them
 		curr.argc = clang_Cursor_getNumArguments(cursor);
-		if (curr.argc == 0) {
+		if (curr.argc == -1) {
+			nob_log(NOB_ERROR, "Unable to get the number of arguments for %s", curr.name.items);
+		} else if (curr.argc == 0) {
 			// Set the arguments to 'void' if there are none
 			nob_sb_append_cstr(&curr.args, "void");
 		} else {
@@ -266,8 +268,8 @@ Nob_String_Builder normalize_string(const char *query) {
 
 int main(int argc, char *argv[]) {
 
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+	if (argc != 3) {
+		fprintf(stderr, "Usage: %s <filename> <query>\n", argv[0]);
 		return 1;
 	}
 
@@ -277,11 +279,10 @@ int main(int argc, char *argv[]) {
 	parse_file(source_file, &coogle_funcs);
 
 
-	Nob_String_Builder normalized = normalize_string("void (  int,   int  ,   const char*)");
+	Nob_String_Builder normalized = normalize_string(argv[2]);
 	nob_log(NOB_INFO, "Normalized Query: %s", normalized.items);
 	print_funcs(&coogle_funcs, normalized.items);
 
-	nob_log(NOB_INFO, "Signature: %s", coogle_funcs.items[0].signature.items);
 
 	dispose_funcs();
 	nob_sb_free(normalized);
