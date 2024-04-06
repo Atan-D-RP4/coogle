@@ -98,10 +98,10 @@ bool nob_read_entire_dir(const char *parent, Nob_File_Paths *children);
 bool nob_write_entire_file(const char *path, const void *data, size_t size);
 Nob_File_Type nob_get_file_type(const char *path);
 
-#define nob_return_defer(value) do { result = (value); goto defer; } while(0) \
+#define nob_return_defer(value) do { result = (value); goto defer; } while(0)
 
 // Initial capacity of a dynamic array
-#define NOB_DA_INIT_CAP 256												 				 \
+#define NOB_DA_INIT_CAP 256
 
 // Append an item to a dynamic array
 #define nob_da_append(da, item)                                                          \
