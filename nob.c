@@ -6,6 +6,11 @@
 int main(int argc, char **argv) {
 	NOB_GO_REBUILD_URSELF(argc, argv);
 
+	if (argc == 1) {
+		fprintf(stderr, "Usage: %s <subcommand> [args...]\n", argv[0]);
+		return 1;
+	}
+
 	const char* program = nob_shift_args(&argc, &argv);
 
 	// TODO: Implement this :- clang -DSTB_C_LEXER_IMPLEMENTATION -x c -c stb_c_lexer.h

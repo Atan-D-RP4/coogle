@@ -11,10 +11,6 @@
 #include "include/stb_c_lexer.h"
 
 // TODO: Fix the copy_and_dispose function. Somehow
-// TODO: Get user input for Queries
-// TODO: Implement a Levenstein Distance computing function
-// TODO: Implement a min() function
-// TODO: Implement a Function comparison function for sorting
 
 typedef struct {
 	size_t count;
@@ -43,7 +39,11 @@ da_Function coogle_funcs = { NULL, 0, 0 };
 
 int visisted = 0;
 int functions = 0;
+Nob_String_Builder normalized;
 
+int min(int a, int b, int c) {
+	return (a < b) ? ((a < c) ? a : c) : ((b < c) ? b : c);
+}
 
 Nob_String_Builder normalize_string(const char *query);
 enum CXChildVisitResult get_functions(CXCursor cursor, CXCursor parent, CXClientData client_data);
@@ -177,21 +177,17 @@ void print_funcs(da_Function *coogle_funcs, const char *query) {
 	
 	printf("\n-----------------------------------\n\n");
 
-	for (size_t count = 0; count < coogle_funcs->count; ++count) {
+	for (size_t count = 0; count < coogle_funcs->count && count < 10; ++count) {
 		Function *curr = &coogle_funcs->items[count];
 
-
-		if (strcmp(curr->signature.items, query) == 0) {
-			nob_log(NOB_INFO, "\r%s: %d:%d: %s :: %s",
-					curr->file_name.items, curr->line, curr->column,
-					curr->name.items, curr->signature.items);
+		nob_log(NOB_INFO, "\r%s: %d:%d: %s :: %s",
+				curr->file_name.items, curr->line, curr->column,
+				curr->name.items, curr->signature.items);
 		}
 //		printf("Sig - %s\n", curr->signature.items);
 //		nob_log(NOB_INFO, "\r%s: %d:%d: %s :: %s :: %s",
 //				curr->file_name.items, curr->line, curr->column,
 //				curr->return_type.items, curr->name.items, curr->args.items);
-
-	}
 
 	printf("\n-----------------------------------\n\n");
 }
@@ -248,23 +244,40 @@ Nob_String_Builder normalize_string(const char *query) {
 	return sb;
 }
 
-//int levenstein_distance(Nob_String_View a, Nob_String_View b) {
-//	int n = a.count;
-//	int m = b.count;
-//
-//	if (n == 0) return m;
-//	if (m == 0) return n;
-//
-//	if (a.data[n - 1] == b.data[m - 1]) {
-//		return levenstein_distance((Nob_String_View) { (n - 1), a.data },
-//				(Nob_String_View) { (m - 1), b.data });
-//	}
-//
-//	return	min(levenstein_distance((Nob_String_View) { (n - 1), a.data },(Nob_String_View) { m, b.data }),
-//		levenstein_distance((Nob_String_View) { n, a.data },( Nob_String_View) { (m - 1), b.data }),
-//		levenstein_distance((Nob_String_View) { (n - 1), a.data }, (Nob_String_View) { (m - 1), b.data })) + 1;
-//}
+int levenstein_distance(Nob_String_Builder a, Nob_String_Builder b) {
+	int len1 = a.count;
+    int len2 = b.count;
 
+    // Create a matrix to store the distances
+    int matrix[len1 + 1][len2 + 1];
+
+    // Initialize the matrix
+    for (int i = 0; i <= len1; ++i)
+        matrix[i][0] = i;
+    
+    for (int i = 0; i <= len2; ++i)
+        matrix[0][i] = i;
+
+    // Fill in the matrix
+    for (int i = 1; i <= len1; i++) {
+        for (int j = 1; j <= len2; j++) {
+            if (a.items[i - 1] == b.items[j - 1])
+                matrix[i][j] = matrix[i - 1][j - 1];
+            else
+                matrix[i][j] = 1 + min(matrix[i - 1][j], matrix[i][j - 1], matrix[i - 1][j - 1]);
+        }
+    }
+
+    // The bottom-right cell of the matrix contains the Levenshtein distance
+    return matrix[len1][len2];
+}
+
+int compare_functions(const void *a, const void *b) {
+	Function *fa = (Function *)a;
+	Function *fb = (Function *)b;
+
+	return levenstein_distance(fa->signature, normalized) - levenstein_distance(fb->signature, normalized);
+}
 
 int main(int argc, char *argv[]) {
 
@@ -279,10 +292,12 @@ int main(int argc, char *argv[]) {
 	parse_file(source_file, &coogle_funcs);
 
 
-	Nob_String_Builder normalized = normalize_string(argv[2]);
+	normalized = normalize_string(argv[2]);
 	nob_log(NOB_INFO, "Normalized Query: %s", normalized.items);
-	print_funcs(&coogle_funcs, normalized.items);
 
+	qsort(coogle_funcs.items, coogle_funcs.count, sizeof(Function), compare_functions);
+
+	print_funcs(&coogle_funcs, normalized.items);
 
 	dispose_funcs();
 	nob_sb_free(normalized);
