@@ -1,5 +1,6 @@
 #define NOB_IMPLEMENTATION
-#include "include/nob.h"
+#include "../include/nob.h"
+#include <stdio.h>
 
 int min(int a, int b, int c) {
 	return (a < b) ? ((a < c) ? a : c) : ((b < c) ? b : c);

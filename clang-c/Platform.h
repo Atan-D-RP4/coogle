@@ -14,7 +14,7 @@
 #ifndef LLVM_CLANG_C_PLATFORM_H
 #define LLVM_CLANG_C_PLATFORM_H
 
-#include "clang-c/ExternC.h"
+#include "ExternC.h"
 
 LLVM_CLANG_C_EXTERN_C_BEGIN
 

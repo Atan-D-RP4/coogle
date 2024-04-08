@@ -14,19 +14,21 @@ int main(int argc, char **argv) {
 	const char* program = nob_shift_args(&argc, &argv);
 
 	// TODO: Implement this :- clang -DSTB_C_LEXER_IMPLEMENTATION -x c -c stb_c_lexer.h
+	// I don't need to do this here, but it's interesting so I'll just leave it
+	// in here.
 
 	Nob_Cmd cmd = {0};
 	nob_cmd_append(&cmd, "gcc");
 	nob_cmd_append(&cmd, "coogle.c");
 	nob_cmd_append(&cmd, "-I", "/usr/lib/llvm-14/include/");
 	nob_cmd_append(&cmd, "/usr/lib/llvm-14/lib/libclang-14.so");
-	nob_cmd_append(&cmd, "-o", "coogle");
+	nob_cmd_append(&cmd, "-o", "coogle2");
 	nob_cmd_append(&cmd, "-Wextra", "-ggdb", "-pedantic");
 
 
 	if (argc > 0) {
-		const char* subcmd = nob_shift_args(&argc, &argv);
 		
+		const char* subcmd = nob_shift_args(&argc, &argv);
 		if (strcmp(subcmd, "build") == 0) {
 			if (!nob_cmd_run_sync(cmd)) return 1;
 			return 0;

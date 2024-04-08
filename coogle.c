@@ -3,7 +3,6 @@
 // Resolved with -I /usr/lib/llvm-14/include/
 // + /usr/lib/llvm-14/lib/libclang-14.so 
 #include <stdio.h>
-#include <unistd.h>
 
 #define NOB_IMPLEMENTATION
 #define STB_C_LEXER_IMPLEMENTATION 
@@ -41,10 +40,6 @@ int visisted = 0;
 int functions = 0;
 Nob_String_Builder normalized;
 
-int min(int a, int b, int c) {
-	return (a < b) ? ((a < c) ? a : c) : ((b < c) ? b : c);
-}
-
 Nob_String_Builder normalize_string(const char *query);
 enum CXChildVisitResult get_functions(CXCursor cursor, CXCursor parent, CXClientData client_data);
 void parse_file(const char* source_file, da_Function *coogle_funcs);
@@ -52,8 +47,21 @@ const char *copy_and_dispose(CXString str);
 void dispose_funcs();
 void print_lexer(stb_lexer lex);
 Nob_String_Builder normalize_string(const char *query);
-// int levenstein_distance(Nob_String_View a, Nob_String_View b);
+int levenstein_distance(Nob_String_Builder a, Nob_String_Builder b);
 
+Nob_String_Builder sb_copy_and_dispose(CXString str) {
+	Nob_String_Builder sb_copy = { NULL, 0, 0 };
+	const char *cstr = clang_getCString(str);
+	size_t len = strlen(cstr);
+	char* copy = (char*)malloc(len + 1);
+	if (copy) {
+		memcpy(copy, cstr, len);
+		copy[len] = '\0';
+	}
+	clang_disposeString(str);
+	
+	return sb_copy;
+}
 
 const char *copy_and_dispose(CXString str) {
 	const char *cstr = clang_getCString(str);
@@ -173,11 +181,11 @@ void parse_file(const char* source_file, da_Function *coogle_funcs) {
 }
 
 
-void print_funcs(da_Function *coogle_funcs, const char *query) {
+void print_funcs(da_Function *coogle_funcs, const char *query, size_t limit) {
 	
 	printf("\n-----------------------------------\n\n");
 
-	for (size_t count = 0; count < coogle_funcs->count && count < 10; ++count) {
+	for (size_t count = 0; count < coogle_funcs->count && count < limit; ++count) {
 		Function *curr = &coogle_funcs->items[count];
 
 		nob_log(NOB_INFO, "\r%s: %d:%d: %s :: %s",
@@ -244,6 +252,10 @@ Nob_String_Builder normalize_string(const char *query) {
 	return sb;
 }
 
+int min(int a, int b, int c) {
+	return (a < b) ? ((a < c) ? a : c) : ((b < c) ? b : c);
+}
+
 int levenstein_distance(Nob_String_Builder a, Nob_String_Builder b) {
 	int len1 = a.count;
     int len2 = b.count;
@@ -295,9 +307,9 @@ int main(int argc, char *argv[]) {
 	normalized = normalize_string(argv[2]);
 	nob_log(NOB_INFO, "Normalized Query: %s", normalized.items);
 
-	qsort(coogle_funcs.items, coogle_funcs.count, sizeof(Function), compare_functions);
+	//qsort(coogle_funcs.items, coogle_funcs.count, sizeof(Function), compare_functions);
 
-	print_funcs(&coogle_funcs, normalized.items);
+	print_funcs(&coogle_funcs, normalized.items, coogle_funcs.count);
 
 	dispose_funcs();
 	nob_sb_free(normalized);
