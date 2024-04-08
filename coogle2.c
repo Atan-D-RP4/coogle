@@ -18,13 +18,6 @@ typedef struct {
 	CXCursor *items;
 } Children;
 
-typedef struct {
-	int argc;
-	Nob_String_View name;
-	Nob_String_View args;
-	Nob_String_View return_type;
-} Function;
-
 enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientData client_data) {
 
 	if (clang_Location_isFromMainFile(clang_getCursorLocation(cursor)) == 0) {
@@ -58,6 +51,7 @@ Nob_String_Builder normalize_string(const char *query) {
 			nob_sb_append_cstr(&sb, token);
 			nob_sb_append_cstr(&sb, " ");
 			sb.items[sb.count] = '\0';
+			free(token);
 		} else if (lex.token == CLEX_id) {
 			nob_sb_append_cstr(&sb, lex.string);
 			nob_sb_append_cstr(&sb, " ");
@@ -159,6 +153,8 @@ int main(int argc, char *argv[]) {
 	Nob_String_Builder normalized_query_sb = normalize_string(argv[2]); 
 	normalized_query = normalized_query_sb.items;
 
+	nob_log(NOB_INFO, "\rNormalized Query: %s", normalized_query);
+
 	Children children = { 0, 0, NULL };
 	CXCursor cursor = clang_getTranslationUnitCursor(tu);
 	clang_visitChildren(cursor, get_children, &children);
@@ -188,6 +184,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// ----------------------------------------------------------------
+
 	nob_da_free(children);
 	nob_sb_free(normalized_query_sb);
 	clang_disposeTranslationUnit(tu);

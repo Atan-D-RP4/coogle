@@ -19,10 +19,10 @@ int main(int argc, char **argv) {
 
 	Nob_Cmd cmd = {0};
 	nob_cmd_append(&cmd, "gcc");
-	nob_cmd_append(&cmd, "coogle.c");
+	nob_cmd_append(&cmd, "coogle2.c");
 	nob_cmd_append(&cmd, "-I", "/usr/lib/llvm-14/include/");
 	nob_cmd_append(&cmd, "/usr/lib/llvm-14/lib/libclang-14.so");
-	nob_cmd_append(&cmd, "-o", "coogle2");
+	nob_cmd_append(&cmd, "-o", "coogle");
 	nob_cmd_append(&cmd, "-Wextra", "-ggdb", "-pedantic");
 
 
