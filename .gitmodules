@@ -1,0 +1,3 @@
+[submodule "coogle_tre_sit/tree_sitter"]
+	path = coogle_tre_sit/tree_sitter
+	url = https://github.com/tree-sitter/tree-sitter.git
