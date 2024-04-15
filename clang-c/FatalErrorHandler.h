@@ -1,4 +1,4 @@
-/*===-- clang-c/FatalErrorHandler.h - Fatal Error Handling --------*- C -*-===*\
+/*===-- FatalErrorHandler.h - Fatal Error Handling --------*- C -*-===*\
 |*                                                                            *|
 |* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
 |* Exceptions.                                                                *|
@@ -10,7 +10,7 @@
 #ifndef LLVM_CLANG_C_FATAL_ERROR_HANDLER_H
 #define LLVM_CLANG_C_FATAL_ERROR_HANDLER_H
 
-#include "clang-c/ExternC.h"
+#include "ExternC.h"
 
 LLVM_CLANG_C_EXTERN_C_BEGIN
 

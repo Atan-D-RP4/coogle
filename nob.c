@@ -5,6 +5,7 @@
 
 int main(int argc, char **argv) {
 	NOB_GO_REBUILD_URSELF(argc, argv);
+	nob_log(NOB_INFO, "Hello, World!");
 
 	const char* program = nob_shift_args(&argc, &argv);
 

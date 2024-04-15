@@ -1,4 +1,4 @@
-/*==-- clang-c/Documentation.h - Utilities for comment processing -*- C -*-===*\
+/*==-- Documentation.h - Utilities for comment processing -*- C -*-===*\
 |*                                                                            *|
 |* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
 |* Exceptions.                                                                *|
@@ -15,8 +15,8 @@
 #ifndef LLVM_CLANG_C_DOCUMENTATION_H
 #define LLVM_CLANG_C_DOCUMENTATION_H
 
-#include "clang-c/ExternC.h"
-#include "clang-c/Index.h"
+#include "ExternC.h"
+#include "Index.h"
 
 LLVM_CLANG_C_EXTERN_C_BEGIN
 

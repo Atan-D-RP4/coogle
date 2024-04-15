@@ -1,4 +1,4 @@
-/*===-- clang-c/CXErrorCode.h - C Index Error Codes  --------------*- C -*-===*\
+/*===-- CXErrorCode.h - C Index Error Codes  --------------*- C -*-===*\
 |*                                                                            *|
 |* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
 |* Exceptions.                                                                *|
@@ -14,8 +14,8 @@
 #ifndef LLVM_CLANG_C_CXERRORCODE_H
 #define LLVM_CLANG_C_CXERRORCODE_H
 
-#include "clang-c/ExternC.h"
-#include "clang-c/Platform.h"
+#include "ExternC.h"
+#include "Platform.h"
 
 LLVM_CLANG_C_EXTERN_C_BEGIN
 

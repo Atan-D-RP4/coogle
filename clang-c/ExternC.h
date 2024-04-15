@@ -1,4 +1,4 @@
-/*===- clang-c/ExternC.h - Wrapper for 'extern "C"' ---------------*- C -*-===*\
+/*===- ExternC.h - Wrapper for 'extern "C"' ---------------*- C -*-===*\
 |*                                                                            *|
 |* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
 |* Exceptions.                                                                *|

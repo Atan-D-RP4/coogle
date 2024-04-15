@@ -1,4 +1,4 @@
-/*===-- clang-c/Rewrite.h - C CXRewriter   --------------------------*- C -*-===*\
+/*===-- Rewrite.h - C CXRewriter   --------------------------*- C -*-===*\
 |*                                                                            *|
 |* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
 |* Exceptions.                                                                *|
@@ -10,10 +10,10 @@
 #ifndef LLVM_CLANG_C_REWRITE_H
 #define LLVM_CLANG_C_REWRITE_H
 
-#include "clang-c/CXString.h"
-#include "clang-c/ExternC.h"
-#include "clang-c/Index.h"
-#include "clang-c/Platform.h"
+#include "CXString.h"
+#include "ExternC.h"
+#include "Index.h"
+#include "Platform.h"
 
 LLVM_CLANG_C_EXTERN_C_BEGIN
 

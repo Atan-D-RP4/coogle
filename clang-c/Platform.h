@@ -1,4 +1,4 @@
-/*===-- clang-c/Platform.h - C Index platform decls   -------------*- C -*-===*\
+/*===-- Platform.h - C Index platform decls   -------------*- C -*-===*\
 |*                                                                            *|
 |* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
 |* Exceptions.                                                                *|
