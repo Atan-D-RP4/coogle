@@ -1,7 +1,7 @@
 #include "clang-c/CXString.h"
-#include <clang-c/Index.h> 
+#include <clang-c/Index.h>
 // Resolved with -I /usr/lib/llvm-14/include/
-// + /usr/lib/llvm-14/lib/libclang-14.so 
+// + /usr/lib/llvm-14/lib/libclang-14.so
 #include <stddef.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -21,6 +21,12 @@ typedef struct {
 	CXCursor *items;
 } Children;
 
+typedef struct {
+	CXIndex index;
+	CXTranslationUnit tu;
+	Children children;
+} ParsedFile;
+
 void qsort_r(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg);
 
 enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientData client_data) {
@@ -34,7 +40,7 @@ enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientD
 		Children *children = (Children *) client_data;
 		nob_da_append(children, cursor);
 	}
-	
+
 	return CXChildVisit_Recurse;
 }
 
@@ -64,7 +70,7 @@ Nob_String_Builder normalize_string(const char *query) {
 			nob_log(NOB_ERROR, "\rUnsupported Token: %d", lex.token);
 		}
 	}
-	
+
 	nob_sb_free(buf);
 	return sb;
 }
@@ -83,7 +89,7 @@ int levenstein_distance(const char *a, const char *b) {
     // Initialize the matrix
     for (int i = 0; i <= len1; ++i)
         matrix[i][0] = i;
-    
+
     for (int i = 0; i <= len2; ++i)
         matrix[0][i] = i;
 
@@ -101,30 +107,15 @@ int levenstein_distance(const char *a, const char *b) {
     return matrix[len1][len2];
 }
 
-int compare_cursors_r(const void *a, const void *b, void *query) {
-	CXCursor cursor_a = *(CXCursor *) a;
-	CXCursor cursor_b = *(CXCursor *) b;
-	
-	CXString sig_a = clang_getTypeSpelling(clang_getCursorType(cursor_a));
-	CXString sig_b = clang_getTypeSpelling(clang_getCursorType(cursor_b));
+ParsedFile parse_file(const char *source_file) {
 
-	size_t rank = levenstein_distance((const char *) query, clang_getCString(sig_a)) - 
-		levenstein_distance((const char *) query, clang_getCString(sig_b));
-
-	clang_disposeString(sig_a);
-	clang_disposeString(sig_b);
-
-	return rank;
-}
-
-void parse_file(const char *source_file, Children *children) {
-	
+	Children children = { 0, 0, NULL };
 	CXIndex index = clang_createIndex(0, 0);
-	CXTranslationUnit tu; 
+	CXTranslationUnit tu;
 	struct CXUnsavedFile temp_files[] = { NULL };
 	enum CXTranslationUnit_Flags flags = CXTranslationUnit_DetailedPreprocessingRecord;
 
-	enum CXErrorCode err = clang_parseTranslationUnit2(index, source_file, NULL, 0, 
+	enum CXErrorCode err = clang_parseTranslationUnit2(index, source_file, NULL, 0,
 			temp_files, temp_files->Length, flags, &tu);
 
 	if (err != CXError_Success) {
@@ -139,7 +130,7 @@ void parse_file(const char *source_file, Children *children) {
 		nob_log(NOB_WARNING, "There were %d diagnostics:", num_diagnostics);
 		for (unsigned i = 0; i < num_diagnostics; i++) {
 			CXDiagnostic diag = clang_getDiagnostic(tu, i);
-			CXString string = clang_formatDiagnostic(diag, 
+			CXString string = clang_formatDiagnostic(diag,
 					clang_defaultDiagnosticDisplayOptions());
 			nob_log(NOB_WARNING, "%s", clang_getCString(string));
 			clang_disposeString(string);
@@ -150,32 +141,45 @@ void parse_file(const char *source_file, Children *children) {
 
 	CXCursor cursor = clang_getTranslationUnitCursor(tu);
 	clang_visitChildren(cursor, get_children, &children);
+	
+	return (ParsedFile) { index, tu, children };
+}
 
-	clang_suspendTranslationUnit(tu);
-	clang_disposeTranslationUnit(tu);
-	clang_disposeIndex(index);
+int compare_cursors_r(const void *a, const void *b, void *query) {
+	CXCursor cursor_a = *(CXCursor *) a;
+	CXCursor cursor_b = *(CXCursor *) b;
 
+	CXString sig_a = clang_getTypeSpelling(clang_getCursorType(cursor_a));
+	CXString sig_b = clang_getTypeSpelling(clang_getCursorType(cursor_b));
+
+	size_t rank = levenstein_distance((const char *) query, clang_getCString(sig_a)) -
+		levenstein_distance((const char *) query, clang_getCString(sig_b));
+
+	clang_disposeString(sig_a);
+	clang_disposeString(sig_b);
+
+	return rank;
 }
 
 void coogle(size_t limit, Children *cursors, const char *normalized_query, const char *source_file) {
 	Children children = *cursors;
-	
-	qsort_r(children.items, children.count, sizeof(CXCursor), compare_cursors_r, (void *)normalized_query);
+
+	qsort_r(children.items, children.count, sizeof(CXCursor), compare_cursors_r, (void *) normalized_query);
 	for (size_t count = 0; count < children.count && count < limit; count++) {
 
 		unsigned line, column;
 		CXSourceLocation loc = clang_getCursorLocation(children.items[count]);
 		clang_getSpellingLocation(loc, NULL, &line, &column, NULL);
-
 		// Get name of function
 		CXString name = clang_getCursorSpelling(children.items[count]);
 
 		// Get signature of function
 		CXString signature = clang_getTypeSpelling(clang_getCursorType(children.items[count]));
 		const char *signature_st = clang_getCString(signature);
-		
+
 		const char *name_str = clang_getCString(name);
-		nob_log(NOB_INFO, "\r%s:%d:%d: %s :: %s", source_file, line, column, name_str, signature_st);
+
+		nob_log(NOB_INFO, "\r%zu - %s:%d:%d: %s :: %s", count + 1, source_file, line, column, name_str, signature_st);
 
 		clang_disposeString(name);
 		clang_disposeString(signature);
@@ -191,49 +195,20 @@ int main(int argc, char *argv[]) {
 	const char *source_file = argv[1];
 	Children children = { 0, 0, NULL };
 
-	Nob_String_Builder normalized_query_sb = normalize_string(argv[2]); 
+	Nob_String_Builder normalized_query_sb = normalize_string(argv[2]);
 	const char *normalized_query = normalized_query_sb.items;
 
 	nob_log(NOB_INFO, "\rNormalized Query: %s", normalized_query);
 
-	CXIndex index = clang_createIndex(0, 0);
-	CXTranslationUnit tu; 
-	struct CXUnsavedFile temp_files[] = { NULL };
-	enum CXTranslationUnit_Flags flags = CXTranslationUnit_DetailedPreprocessingRecord;
-
-	enum CXErrorCode err = clang_parseTranslationUnit2(index, source_file, NULL, 0, 
-			temp_files, temp_files->Length, flags, &tu);
-
-	if (err != CXError_Success) {
-		nob_log(NOB_ERROR, "Unable to parse translation unit. Quitting.");
-		return 1;
-	}
-
-	nob_log(NOB_INFO, "Parsed file: %s", source_file);
-
-	unsigned num_diagnostics = clang_getNumDiagnostics(tu);
-	if (num_diagnostics > 0) {
-		nob_log(NOB_WARNING, "There were %d diagnostics:", num_diagnostics);
-		for (unsigned i = 0; i < num_diagnostics; i++) {
-			CXDiagnostic diag = clang_getDiagnostic(tu, i);
-			CXString string = clang_formatDiagnostic(diag, 
-					clang_defaultDiagnosticDisplayOptions());
-			nob_log(NOB_WARNING, "%s", clang_getCString(string));
-			clang_disposeString(string);
-		}
-	} else {
-		nob_log(NOB_INFO, "No diagnostics.");
-	}
-
-	CXCursor cursor = clang_getTranslationUnitCursor(tu);
-	clang_visitChildren(cursor, get_children, &children);
+	ParsedFile parsed_file = parse_file(source_file);
+	CXIndex index = parsed_file.index;
+	CXTranslationUnit tu = parsed_file.tu;
+	children = parsed_file.children;
 
 	coogle(60, &children, normalized_query, source_file);
-	printf("Functions: %d\n", functions);
 
 	nob_da_free(children);
 	nob_sb_free(normalized_query_sb);
-	clang_suspendTranslationUnit(tu);
 	clang_disposeTranslationUnit(tu);
 	clang_disposeIndex(index);
 
@@ -241,3 +216,4 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
+
