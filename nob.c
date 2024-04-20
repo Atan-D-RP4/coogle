@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 	nob_cmd_append(&cmd, "-I", "./");
 	nob_cmd_append(&cmd, "lib/libclang-14.so");
 	nob_cmd_append(&cmd, "-o", "coogle");
-	nob_cmd_append(&cmd, "-Wextra", "-ggdb", "-pedantic");
+	nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb", "-pedantic");
 
 
 	if (argc > 0) {

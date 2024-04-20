@@ -21,6 +21,8 @@ typedef struct {
 	CXCursor *items;
 } Children;
 
+void qsort_r(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg);
+
 enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientData client_data) {
 
 	if (clang_Location_isFromMainFile(clang_getCursorLocation(cursor)) == 0) {
@@ -158,7 +160,7 @@ void parse_file(const char *source_file, Children *children) {
 void coogle(size_t limit, Children *cursors, const char *normalized_query, const char *source_file) {
 	Children children = *cursors;
 	
-	qsort_r(children.items, children.count, sizeof(CXCursor), compare_cursors_r, normalized_query);
+	qsort_r(children.items, children.count, sizeof(CXCursor), compare_cursors_r, (void *)normalized_query);
 	for (size_t count = 0; count < children.count && count < limit; count++) {
 
 		unsigned line, column;
