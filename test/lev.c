@@ -16,7 +16,7 @@ int levenstein_distance(Nob_String_View a, Nob_String_View b) {
     // Initialize the matrix
     for (int i = 0; i <= len1; ++i)
         matrix[i][0] = i;
-    
+
     for (int i = 0; i <= len2; ++i)
         matrix[0][i] = i;
 
@@ -37,7 +37,7 @@ int levenstein_distance(Nob_String_View a, Nob_String_View b) {
 		printf("\n");
 	}
 	printf("\n");
-	
+
     // The bottom-right cell of the matrix contains the Levenshtein distance
     return matrix[len1][len2];
 }

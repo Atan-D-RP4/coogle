@@ -66,7 +66,7 @@ Nob_String_Builder normalize_string(const char *query) {
 			nob_sb_append_cstr(&sb, lex.string);
 			nob_sb_append_cstr(&sb, " ");
 			sb.items[sb.count] = '\0';
-		 } else {
+		} else {
 			nob_log(NOB_ERROR, "\rUnsupported Token: %d", lex.token);
 		}
 	}
@@ -81,30 +81,30 @@ int min(int a, int b, int c) {
 
 int levenstein_distance(const char *a, const char *b) {
 	int len1 = strlen(a);
-    int len2 = strlen(b);
+	int len2 = strlen(b);
 
-    // Create a matrix to store the distances
-    int matrix[len1 + 1][len2 + 1];
+	// Create a matrix to store the distances
+	int matrix[len1 + 1][len2 + 1];
 
-    // Initialize the matrix
-    for (int i = 0; i <= len1; ++i)
-        matrix[i][0] = i;
+	// Initialize the matrix
+	for (int i = 0; i <= len1; ++i)
+		matrix[i][0] = i;
 
-    for (int i = 0; i <= len2; ++i)
-        matrix[0][i] = i;
+	for (int i = 0; i <= len2; ++i)
+		matrix[0][i] = i;
 
-    // Fill in the matrix
-    for (int i = 1; i <= len1; i++) {
-        for (int j = 1; j <= len2; j++) {
-            if (a[i - 1] == b[j - 1])
-                matrix[i][j] = matrix[i - 1][j - 1];
-            else
-                matrix[i][j] = 1 + min(matrix[i - 1][j], matrix[i][j - 1], matrix[i - 1][j - 1]);
-        }
-    }
+	// Fill in the matrix
+	for (int i = 1; i <= len1; i++) {
+		for (int j = 1; j <= len2; j++) {
+			if (a[i - 1] == b[j - 1])
+				matrix[i][j] = matrix[i - 1][j - 1];
+			else
+				matrix[i][j] = 1 + min(matrix[i - 1][j], matrix[i][j - 1], matrix[i - 1][j - 1]);
+		}
+	}
 
-    // The bottom-right cell of the matrix contains the Levenshtein distance
-    return matrix[len1][len2];
+	// The bottom-right cell of the matrix contains the Levenshtein distance
+	return matrix[len1][len2];
 }
 
 ParsedFile parse_file(const char *source_file) {
@@ -141,7 +141,7 @@ ParsedFile parse_file(const char *source_file) {
 
 	CXCursor cursor = clang_getTranslationUnitCursor(tu);
 	clang_visitChildren(cursor, get_children, &children);
-	
+
 	return (ParsedFile) { index, tu, children };
 }
 
@@ -159,6 +159,21 @@ int compare_cursors_r(const void *a, const void *b, void *query) {
 	clang_disposeString(sig_b);
 
 	return rank;
+}
+
+void printTU_Usage(CXTranslationUnit tu) {
+
+	CXTUResourceUsage usage = clang_getCXTUResourceUsage(tu);
+
+	nob_log(NOB_INFO, "Memory Usage: %zu", usage.numEntries);
+	for (unsigned i = 0; i < usage.numEntries; i++) {
+		CXTUResourceUsageEntry entry = usage.entries[i];
+		const char* name = clang_getTUResourceUsageName(entry.kind);
+		nob_log(NOB_INFO, "%s: %zu", name, entry.amount);
+		free((void *) name);
+	}
+
+	clang_disposeCXTUResourceUsage(usage);
 }
 
 void coogle(size_t limit, Children *cursors, const char *normalized_query, const char *source_file) {
