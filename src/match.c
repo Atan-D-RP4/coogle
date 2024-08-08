@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-
 int match_expr(char *regexp, char *text);
 int match_here(char *regexp, char *text);
 int match_star(int c, char *regexp, char *text);

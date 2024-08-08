@@ -13,7 +13,16 @@
 #define STB_C_LEXER_IMPLEMENTATION
 #include "include/stb_c_lexer.h"
 
-int functions = 0;
+#define min(a, ...) ({ 													\
+		typeof(a) args[] = {a, __VA_ARGS__}; 							\
+		typeof(a) min = args[0]; 										\
+		for (size_t i = 1; i < sizeof(args) / sizeof(args[0]); ++i) { 	\
+			if (args[i] < min) { 										\
+				min = args[i]; 											\
+			} 															\
+		} 																\
+		min; 															\
+	})
 
 typedef struct {
 	size_t count;
@@ -21,13 +30,52 @@ typedef struct {
 	CXCursor *items;
 } Children;
 
+typedef struct Function {
+	Nob_String_Builder name;
+	Nob_String_Builder return_type;
+	Nob_String_Builder arguments;
+	unsigned int line;
+	unsigned int column;
+} Function;
+
 typedef struct {
 	CXIndex index;
 	CXTranslationUnit tu;
 	Children children;
 } ParsedFile;
 
+int functions = 0;
+
+int match_expr(char *regexp, char *text);
+int match_here(char *regexp, char *text);
+int match_star(int c, char *regexp, char *text);
+
 void qsort_r(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg);
+int compare_cursors_r(const void *a, const void *b, void *query);
+int levenstein_distance(const char *a, const char *b);
+
+enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientData client_data);
+Nob_String_Builder normalize_string(const char *query);
+ParsedFile parse_file(const char *source_file);
+void printTU_Usage(CXTranslationUnit tu);
+Function* getFuncFromCursor(CXCursor cursor);
+
+int compare_cursors_r(const void *a, const void *b, void *query) {
+	CXCursor cursor_a = *(CXCursor *) a;
+	CXCursor cursor_b = *(CXCursor *) b;
+
+	CXString sig_a = clang_getTypeSpelling(clang_getCursorType(cursor_a));
+	CXString sig_b = clang_getTypeSpelling(clang_getCursorType(cursor_b));
+
+	size_t rank = levenstein_distance((const char *) query, clang_getCString(sig_a)) -
+		levenstein_distance((const char *) query, clang_getCString(sig_b));
+
+	clang_disposeString(sig_a);
+	clang_disposeString(sig_b);
+
+	return rank;
+}
+
 
 enum CXChildVisitResult get_children(CXCursor cursor, CXCursor parent, CXClientData client_data) {
 
@@ -73,10 +121,6 @@ Nob_String_Builder normalize_string(const char *query) {
 
 	nob_sb_free(buf);
 	return sb;
-}
-
-int min(int a, int b, int c) {
-	return (a < b) ? ((a < c) ? a : c) : ((b < c) ? b : c);
 }
 
 int levenstein_distance(const char *a, const char *b) {
@@ -144,23 +188,6 @@ ParsedFile parse_file(const char *source_file) {
 
 	return (ParsedFile) { index, tu, children };
 }
-
-int compare_cursors_r(const void *a, const void *b, void *query) {
-	CXCursor cursor_a = *(CXCursor *) a;
-	CXCursor cursor_b = *(CXCursor *) b;
-
-	CXString sig_a = clang_getTypeSpelling(clang_getCursorType(cursor_a));
-	CXString sig_b = clang_getTypeSpelling(clang_getCursorType(cursor_b));
-
-	size_t rank = levenstein_distance((const char *) query, clang_getCString(sig_a)) -
-		levenstein_distance((const char *) query, clang_getCString(sig_b));
-
-	clang_disposeString(sig_a);
-	clang_disposeString(sig_b);
-
-	return rank;
-}
-
 void printTU_Usage(CXTranslationUnit tu) {
 
 	CXTUResourceUsage usage = clang_getCXTUResourceUsage(tu);
@@ -170,10 +197,43 @@ void printTU_Usage(CXTranslationUnit tu) {
 		CXTUResourceUsageEntry entry = usage.entries[i];
 		const char* name = clang_getTUResourceUsageName(entry.kind);
 		nob_log(NOB_INFO, "%s: %zu", name, entry.amount);
-		free((void *) name);
 	}
 
 	clang_disposeCXTUResourceUsage(usage);
+}
+
+Function* getFuncFromCursor(CXCursor cursor) {
+	Function *func = (Function *) calloc(1, sizeof(Function));
+	memset(func, 0, sizeof(Function));
+
+	CXString name = clang_getCursorSpelling(cursor);
+	CXString signature = clang_getTypeSpelling(clang_getCursorType(cursor));
+	CXSourceLocation loc = clang_getCursorLocation(cursor);
+
+	clang_getSpellingLocation(loc, NULL, &func->line, &func->column, NULL);
+
+	nob_sb_append_cstr(&func->name, clang_getCString(name));
+	nob_sb_append_cstr(&func->return_type, clang_getCString(signature));
+
+	int argc = clang_Cursor_getNumArguments(cursor);
+	for (size_t i = 0; i < (size_t) argc; i++) {
+		CXCursor arg = clang_Cursor_getArgument(cursor, i);
+		CXString arg_name = clang_getCursorSpelling(arg);
+		CXString arg_type = clang_getTypeSpelling(clang_getCursorType(arg));
+
+		nob_sb_append_cstr(&func->arguments, clang_getCString(arg_type));
+		nob_sb_append_cstr(&func->arguments, " ");
+		nob_sb_append_cstr(&func->arguments, clang_getCString(arg_name));
+		nob_sb_append_cstr(&func->arguments, ", ");
+
+		clang_disposeString(arg_name);
+		clang_disposeString(arg_type);
+	}
+
+	clang_disposeString(name);
+	clang_disposeString(signature);
+
+	return func;
 }
 
 void coogle(size_t limit, Children *cursors, const char *normalized_query, const char *source_file) {
@@ -182,22 +242,12 @@ void coogle(size_t limit, Children *cursors, const char *normalized_query, const
 	qsort_r(children.items, children.count, sizeof(CXCursor), compare_cursors_r, (void *) normalized_query);
 	for (size_t count = 0; count < children.count && count < limit; count++) {
 
-		unsigned line, column;
-		CXSourceLocation loc = clang_getCursorLocation(children.items[count]);
-		clang_getSpellingLocation(loc, NULL, &line, &column, NULL);
-		// Get name of function
-		CXString name = clang_getCursorSpelling(children.items[count]);
+		Function *func = getFuncFromCursor(children.items[count]);
 
-		// Get signature of function
-		CXString signature = clang_getTypeSpelling(clang_getCursorType(children.items[count]));
-		const char *signature_st = clang_getCString(signature);
-
-		const char *name_str = clang_getCString(name);
-
-		nob_log(NOB_INFO, "\r%zu - %s:%d:%d: %s :: %s", count + 1, source_file, line, column, name_str, signature_st);
-
-		clang_disposeString(name);
-		clang_disposeString(signature);
+		nob_log(NOB_INFO, "%2zu - %s:%4d:%2d - %s :: %s(%s)",
+				count + 1, source_file, func->line, func->column,
+				func->return_type.items, func->name.items, func->arguments.items);
+		free(func);
 	}
 }
 
@@ -222,6 +272,7 @@ int main(int argc, char *argv[]) {
 
 	coogle(60, &children, normalized_query, source_file);
 
+	printTU_Usage(tu);
 	nob_da_free(children);
 	nob_sb_free(normalized_query_sb);
 	clang_disposeTranslationUnit(tu);
