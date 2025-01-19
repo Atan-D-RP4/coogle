@@ -71,28 +71,28 @@ int grep(char *regexp, FILE *f, char *name) {
 
 		return nmatch;
 }
-int main(int argc, char *argv[])
-{
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s regexp [file ...]\n", argv[0]);
-		exit(1);
-	}
-	int nmatch = 0;
-	if (argc == 2) {
-		if (grep(argv[1], stdin, NULL) > 0)
-			nmatch++;
-	} else {
-		for (int i = 2; i < argc; i++) {
-			FILE *f = fopen(argv[i], "r");
-			if (f == NULL) {
-				perror(argv[i]);
-				continue;
-			}
-			if (grep(argv[1], f, argc > 3 ? argv[i] : NULL) > 0)
-				nmatch++;
-			fclose(f);
-		}
-	}
 
-	return 0;
-}
+//int main(int argc, char *argv[]) {
+//	if (argc < 2) {
+//		fprintf(stderr, "Usage: %s regexp [file ...]\n", argv[0]);
+//		exit(1);
+//	}
+//	int nmatch = 0;
+//	if (argc == 2) {
+//		if (grep(argv[1], stdin, NULL) > 0)
+//			nmatch++;
+//	} else {
+//		for (int i = 2; i < argc; i++) {
+//			FILE *f = fopen(argv[i], "r");
+//			if (f == NULL) {
+//				perror(argv[i]);
+//				continue;
+//			}
+//			if (grep(argv[1], f, argc > 3 ? argv[i] : NULL) > 0)
+//				nmatch++;
+//			fclose(f);
+//		}
+//	}
+//
+//	return 0;
+//}

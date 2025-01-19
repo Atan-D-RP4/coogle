@@ -1,5 +1,5 @@
 #include "clang-c/CXString.h"
-#include <clang-c/Index.h> 
+#include <clang-c/Index.h>
 
 #define NOB_IMPLEMENTATION
 #include "../include/nob.h"
@@ -8,11 +8,11 @@ int main() {
 
     const char *source_file = "./lev.c";
 	CXIndex index = clang_createIndex(0, 0);
-	CXTranslationUnit tu; 
+	CXTranslationUnit tu;
 	struct CXUnsavedFile temp_files[] = { NULL };
 	enum CXTranslationUnit_Flags flags = CXTranslationUnit_DetailedPreprocessingRecord;
 
-	enum CXErrorCode err = clang_parseTranslationUnit2(index, source_file, NULL, 0, 
+	enum CXErrorCode err = clang_parseTranslationUnit2(index, source_file, NULL, 0,
 			temp_files, temp_files->Length, flags, &tu);
 
 	if (err != CXError_Success) {
@@ -28,7 +28,7 @@ int main() {
 		for (unsigned i = 0; i < num_diagnostics; i++) {
 			CXDiagnostic diag = clang_getDiagnostic(tu, i);
 	unsigned num_diagnostics = clang_getNumDiagnostics(tu);
-			CXString string = clang_formatDiagnostic(diag, 
+			CXString string = clang_formatDiagnostic(diag,
 					clang_defaultDiagnosticDisplayOptions());
 			nob_log(NOB_WARNING, "%s", clang_getCString(string));
 			clang_disposeString(string);
@@ -42,6 +42,6 @@ int main() {
 	clang_disposeIndex(index);
 
 	nob_log(NOB_INFO, "Exit.");
-    
+
     return 0;
 }
